@@ -9,8 +9,8 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "blockchain",
-	Short: "simple blockchain implementation",
+	Use:   "wallet",
+	Short: "simple wallet implementation",
 }
 
 func Execute() {
@@ -25,9 +25,7 @@ func init() {
 	b := &command.Builder{}
 	b.AddCommand(
 		newCreateCmd(),
-		newBalanceCmd(),
-		newPrintCmd(),
-		newSendCmd(),
+		newListCmd(),
 	)
 	b.Build(rootCmd)
 }
