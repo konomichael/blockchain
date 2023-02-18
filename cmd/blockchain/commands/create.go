@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"blockchain/pkg/blockchain"
@@ -10,7 +12,7 @@ import (
 var _ command.Cmd = (*createCmd)(nil)
 
 type createCmd struct {
-	address string `validate:"required"` //btc address
+	Address string `validate:"required"` //btc address
 
 	baseCmd *cobra.Command
 }
@@ -26,16 +28,17 @@ func newCreateCmd() command.Cmd {
 		Use:   "create",
 		Short: "creates a new blockchain",
 		RunE: func(_ *cobra.Command, args []string) error {
-			chain, err := blockchain.InitBlockChain(cmd.address)
+			chain, err := blockchain.InitBlockChain(cmd.Address)
 			if err != nil {
 				return err
 			}
 			defer chain.Close()
 
+			fmt.Println("Created a new blockchain")
 			return nil
 		},
 	}
-	baseCmd.Flags().StringVar(&cmd.address, "address", "", "genesis wallet address")
+	baseCmd.Flags().StringVar(&cmd.Address, "Address", "", "genesis wallet Address")
 
 	cmd.baseCmd = baseCmd
 	return cmd

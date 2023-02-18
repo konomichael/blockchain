@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"blockchain/pkg/blockchain"
@@ -10,7 +12,7 @@ import (
 var _ command.Cmd = (*balanceCmd)(nil)
 
 type balanceCmd struct {
-	address string `validate:"required"` //btc address
+	Address string `validate:"required"` //btc address
 
 	baseCmd *cobra.Command
 }
@@ -33,15 +35,15 @@ func newBalanceCmd() command.Cmd {
 			defer chain.Close()
 
 			balance := 0
-			UTXOs := chain.FindUTXO(cmd.address)
+			UTXOs := chain.FindUTXO(cmd.Address)
 			for _, out := range UTXOs {
 				balance += out.Value
 			}
-
+			fmt.Println("Balance of", cmd.Address, "is", balance)
 			return nil
 		},
 	}
-	baseCmd.Flags().StringVar(&cmd.address, "address", "", "wallet address")
+	baseCmd.Flags().StringVar(&cmd.Address, "address", "", "wallet address")
 
 	cmd.baseCmd = baseCmd
 	return cmd

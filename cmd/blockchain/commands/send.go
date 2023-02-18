@@ -1,7 +1,8 @@
 package commands
 
 import (
-	"github.com/go-playground/validator/v10"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"blockchain/pkg/blockchain"
@@ -11,9 +12,9 @@ import (
 var _ command.Cmd = (*sendCmd)(nil)
 
 type sendCmd struct {
-	from   string `validate:"required"`
-	to     string `validate:"required"`
-	amount int    `validate:"required,gte=0"`
+	From   string `validate:"required"`
+	To     string `validate:"required"`
+	Amount int    `validate:"gte=0"`
 
 	baseCmd *cobra.Command
 }
@@ -29,18 +30,13 @@ func newSendCmd() command.Cmd {
 		Use:   "send",
 		Short: "send amount from one wallet to another",
 		RunE: func(_ *cobra.Command, args []string) error {
-			validate := validator.New()
-			if err := validate.Struct(cmd); err != nil {
-				return err
-			}
-
 			chain, err := blockchain.ContinueBlockChain()
 			if err != nil {
 				return err
 			}
 			defer chain.Close()
 
-			tx, err := blockchain.NewTransaction(cmd.from, cmd.to, cmd.amount, chain)
+			tx, err := blockchain.NewTransaction(cmd.From, cmd.To, cmd.Amount, chain)
 			if err != nil {
 				return err
 			}
@@ -50,12 +46,13 @@ func newSendCmd() command.Cmd {
 				return err
 			}
 
+			fmt.Println("Sent", cmd.Amount, "from", cmd.From, "to", cmd.To)
 			return nil
 		},
 	}
-	baseCmd.Flags().StringVar(&cmd.from, "from", "", "source wallet address")
-	baseCmd.Flags().StringVar(&cmd.to, "to", "", "destination wallet address")
-	baseCmd.Flags().IntVar(&cmd.amount, "amount", 0, "amount to send")
+	baseCmd.Flags().StringVar(&cmd.From, "from", "", "source wallet Address")
+	baseCmd.Flags().StringVar(&cmd.To, "to", "", "destination wallet Address")
+	baseCmd.Flags().IntVar(&cmd.Amount, "amount", 0, "amount to send")
 
 	cmd.baseCmd = baseCmd
 	return cmd
