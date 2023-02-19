@@ -2,11 +2,8 @@ package util
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/x509"
 	"encoding/binary"
 	"encoding/gob"
-	"encoding/pem"
 	"fmt"
 
 	"github.com/mr-tron/base58"
@@ -62,39 +59,4 @@ func Base58Decode(input []byte) []byte {
 	}
 
 	return decode
-}
-
-func X509Encode(privateKey *ecdsa.PrivateKey, publicKey *ecdsa.PublicKey) ([]byte, []byte) {
-	x509EncodedPriv, err := x509.MarshalECPrivateKey(privateKey)
-	if err != nil {
-		panic(fmt.Errorf("failed to marshal private key, err: %w", err))
-	}
-	pemEncodedPriv := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x509EncodedPriv})
-
-	x509EncodedPub, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		panic(fmt.Errorf("failed to marshal public key, err: %w", err))
-	}
-	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
-
-	return pemEncodedPriv, pemEncodedPub
-}
-
-func X509Decode(pemEncodedPriv, pemEncodedPub []byte) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
-	block, _ := pem.Decode(pemEncodedPriv)
-	x509Encoded := block.Bytes
-	privateKey, err := x509.ParseECPrivateKey(x509Encoded)
-	if err != nil {
-		panic(fmt.Errorf("failed to parse private key, err: %w", err))
-	}
-
-	block, _ = pem.Decode(pemEncodedPub)
-	x509Encoded = block.Bytes
-	genericPublicKey, err := x509.ParsePKIXPublicKey(x509Encoded)
-	if err != nil {
-		panic(fmt.Errorf("failed to parse public key, err: %w", err))
-	}
-	publicKey := genericPublicKey.(*ecdsa.PublicKey)
-
-	return privateKey, publicKey
 }

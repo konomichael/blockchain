@@ -1,4 +1,4 @@
-package commands
+package blockchain
 
 import (
 	"fmt"
@@ -40,6 +40,9 @@ func newPrintCmd() command.Cmd {
 				fmt.Printf("Hash: %x\n", block.Hash)
 				pow := blockchain.NewProof(block)
 				fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
+				for _, tx := range block.Transactions {
+					fmt.Println(tx)
+				}
 				fmt.Println()
 			}
 

@@ -1,4 +1,4 @@
-package commands
+package blockchain
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 
 	"blockchain/pkg/blockchain"
 	"blockchain/pkg/command"
+	"blockchain/pkg/wallet"
 )
 
 var _ command.Cmd = (*createCmd)(nil)
@@ -28,6 +29,11 @@ func newCreateCmd() command.Cmd {
 		Use:   "create",
 		Short: "creates a new blockchain",
 		RunE: func(_ *cobra.Command, args []string) error {
+			_, err := wallet.PubKeyHashFromAddress(cmd.Address)
+			if err != nil {
+				return err
+			}
+
 			chain, err := blockchain.InitBlockChain(cmd.Address)
 			if err != nil {
 				return err
@@ -38,7 +44,7 @@ func newCreateCmd() command.Cmd {
 			return nil
 		},
 	}
-	baseCmd.Flags().StringVar(&cmd.Address, "Address", "", "genesis wallet Address")
+	baseCmd.Flags().StringVar(&cmd.Address, "address", "", "genesis wallet Address")
 
 	cmd.baseCmd = baseCmd
 	return cmd

@@ -1,12 +1,14 @@
-package commands
+package blockchain
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"blockchain/pkg/blockchain"
 	"blockchain/pkg/command"
+	"blockchain/pkg/wallet"
 )
 
 var _ command.Cmd = (*sendCmd)(nil)
@@ -30,6 +32,13 @@ func newSendCmd() command.Cmd {
 		Use:   "send",
 		Short: "send amount from one wallet to another",
 		RunE: func(_ *cobra.Command, args []string) error {
+			if _, err := wallet.PubKeyHashFromAddress(cmd.From); err != nil {
+				return errors.New("invalid from address")
+			}
+			if _, err := wallet.PubKeyHashFromAddress(cmd.To); err != nil {
+				return errors.New("invalid to address")
+			}
+
 			chain, err := blockchain.ContinueBlockChain()
 			if err != nil {
 				return err

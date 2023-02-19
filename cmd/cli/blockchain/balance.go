@@ -1,4 +1,4 @@
-package commands
+package blockchain
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 
 	"blockchain/pkg/blockchain"
 	"blockchain/pkg/command"
+	"blockchain/pkg/wallet"
 )
 
 var _ command.Cmd = (*balanceCmd)(nil)
@@ -28,6 +29,11 @@ func newBalanceCmd() command.Cmd {
 		Use:   "balance",
 		Short: "get balance of a wallet",
 		RunE: func(_ *cobra.Command, args []string) error {
+			pubKeyHash, err := wallet.PubKeyHashFromAddress(cmd.Address)
+			if err != nil {
+				return err
+			}
+
 			chain, err := blockchain.ContinueBlockChain()
 			if err != nil {
 				return err
@@ -35,7 +41,7 @@ func newBalanceCmd() command.Cmd {
 			defer chain.Close()
 
 			balance := 0
-			UTXOs := chain.FindUTXO(cmd.Address)
+			UTXOs := chain.FindUTXO(pubKeyHash)
 			for _, out := range UTXOs {
 				balance += out.Value
 			}

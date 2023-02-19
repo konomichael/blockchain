@@ -1,4 +1,4 @@
-package commands
+package wallet
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"blockchain/pkg/command"
-	"blockchain/wallet"
+	"blockchain/pkg/wallet"
 )
 
 var _ command.Cmd = (*listCmd)(nil)
