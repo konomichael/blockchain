@@ -18,6 +18,7 @@ func init() {
 		newBalanceCmd(),
 		newPrintCmd(),
 		newSendCmd(),
+		newReindexCmd(),
 	)
 	b.Build(RootCmd)
 }

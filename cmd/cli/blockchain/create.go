@@ -40,6 +40,11 @@ func newCreateCmd() command.Cmd {
 			}
 			defer chain.Close()
 
+			utxoSet := blockchain.NewUTXOSet(chain)
+			if err = utxoSet.Reindex(); err != nil {
+				return err
+			}
+
 			fmt.Println("Created a new blockchain")
 			return nil
 		},

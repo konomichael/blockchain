@@ -18,7 +18,7 @@ type Transaction struct {
 	Outputs []TxOutput
 }
 
-func NewTransaction(from, to string, amount int, chain *BlockChain) (*Transaction, error) {
+func NewTransaction(from, to string, amount int, utxo *UTXOSet) (*Transaction, error) {
 	var (
 		inputs  []TxInput
 		outputs []TxOutput
@@ -32,7 +32,10 @@ func NewTransaction(from, to string, amount int, chain *BlockChain) (*Transactio
 	pubKeyBytes := w.PublicKeyBytes()
 	pubKeyHash := crypto.HashPublicKey(pubKeyBytes)
 
-	acc, validOutputs := chain.FindSpendableOutputs(pubKeyHash, amount)
+	acc, validOutputs, err := utxo.FindSpendableUTXOs(pubKeyHash, amount)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrorTxCreateFailed, err)
+	}
 	if acc < amount {
 		return nil, fmt.Errorf("%w: not enough funds", ErrorTxCreateFailed)
 	}
@@ -67,7 +70,7 @@ func NewTransaction(from, to string, amount int, chain *BlockChain) (*Transactio
 		return nil, fmt.Errorf("%w: %s", ErrorTxCreateFailed, err)
 	}
 
-	if err := chain.SignTransaction(tx, w.PrivateKey); err != nil {
+	if err := utxo.SignTransaction(tx, w.PrivateKey); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrorTxCreateFailed, err)
 	}
 

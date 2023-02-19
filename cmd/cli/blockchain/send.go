@@ -45,13 +45,19 @@ func newSendCmd() command.Cmd {
 			}
 			defer chain.Close()
 
-			tx, err := blockchain.NewTransaction(cmd.From, cmd.To, cmd.Amount, chain)
+			utxo := blockchain.NewUTXOSet(chain)
+
+			tx, err := blockchain.NewTransaction(cmd.From, cmd.To, cmd.Amount, utxo)
 			if err != nil {
 				return err
 			}
 
-			err = chain.AddBlock([]*blockchain.Transaction{tx})
+			block, err := chain.AddBlock([]*blockchain.Transaction{tx})
 			if err != nil {
+				return err
+			}
+
+			if err := utxo.Update(block); err != nil {
 				return err
 			}
 

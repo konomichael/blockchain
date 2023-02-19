@@ -7,6 +7,8 @@ import (
 	"blockchain/pkg/wallet"
 )
 
+type TxOutputs []TxOutput
+
 // TxOutput represents a transaction output
 type TxOutput struct {
 	Value      int

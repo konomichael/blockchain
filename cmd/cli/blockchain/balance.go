@@ -40,9 +40,15 @@ func newBalanceCmd() command.Cmd {
 			}
 			defer chain.Close()
 
+			utxoSet := blockchain.NewUTXOSet(chain)
+
 			balance := 0
-			UTXOs := chain.FindUTXO(pubKeyHash)
-			for _, out := range UTXOs {
+			UTXOs, err := utxoSet.FindUTXOs(pubKeyHash)
+			if err != nil {
+				return err
+			}
+
+			for _, out := range *UTXOs {
 				balance += out.Value
 			}
 			fmt.Println("Balance of", cmd.Address, "is", balance)
