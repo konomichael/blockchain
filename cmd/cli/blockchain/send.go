@@ -52,7 +52,12 @@ func newSendCmd() command.Cmd {
 				return err
 			}
 
-			block, err := chain.AddBlock([]*blockchain.Transaction{tx})
+			cbTx, err := blockchain.CoinbaseTx(cmd.From, "")
+			if err != nil {
+				return err
+			}
+
+			block, err := chain.AddBlock([]*blockchain.Transaction{tx, cbTx})
 			if err != nil {
 				return err
 			}

@@ -40,6 +40,11 @@ func CreateWallet() (string, error) {
 }
 
 func GetWallet(address string) (*Wallet, error) {
+	_, err := PubKeyHashFromAddress(address)
+	if err != nil {
+		return nil, err
+	}
+
 	w := &Wallet{}
 	if err := w.loadFromFile(address); err != nil {
 		return nil, err
@@ -57,7 +62,7 @@ func PubKeyHashFromAddress(address string) ([]byte, error) {
 
 	versionedPubKeyHash := pubKeyHash[:len(pubKeyHash)-checksumLength]
 	targetChecksum := crypto.Checksum(versionedPubKeyHash, checksumLength)
-	if bytes.Compare(actualChecksum, targetChecksum) != 0 {
+	if !bytes.Equal(actualChecksum, targetChecksum) {
 		return nil, errors.New("invalid address")
 	}
 

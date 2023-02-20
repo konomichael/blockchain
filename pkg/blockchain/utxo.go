@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 
 	"github.com/dgraph-io/badger"
-
-	"blockchain/pkg/util"
 )
 
 var (
@@ -39,7 +37,7 @@ func (u *UTXOSet) Reindex() error {
 			}
 
 			key = append(utxoPrefix, key...)
-			val, err := util.GobEncode(outs)
+			val, err := outs.Serialize()
 			if err != nil {
 				return err
 			}
@@ -65,7 +63,7 @@ func (u *UTXOSet) Update(block *Block) error {
 
 					var outs TxOutputs
 					err = item.Value(func(val []byte) error {
-						return util.GobDecode(val, &outs)
+						return outs.Deserialize(val)
 					})
 					if err != nil {
 						return err
@@ -84,7 +82,7 @@ func (u *UTXOSet) Update(block *Block) error {
 						continue
 					}
 
-					encoded, err := util.GobEncode(updatedOuts)
+					encoded, err := updatedOuts.Serialize()
 					if err != nil {
 						return err
 					}
@@ -100,7 +98,7 @@ func (u *UTXOSet) Update(block *Block) error {
 			}
 
 			txID := append(utxoPrefix, tx.ID...)
-			encoded, err := util.GobEncode(newOutputs)
+			encoded, err := newOutputs.Serialize()
 			if err != nil {
 				return err
 			}
@@ -184,7 +182,7 @@ func (u *UTXOSet) FindUTXOs(pubKeyHash []byte) (*TxOutputs, error) {
 			item := it.Item()
 			var outs TxOutputs
 			err := item.Value(func(val []byte) error {
-				return util.GobDecode(val, &outs)
+				return outs.Deserialize(val)
 			})
 
 			if err != nil {
@@ -220,7 +218,7 @@ func (u *UTXOSet) FindSpendableUTXOs(pubKeyHash []byte, amount int) (int, map[st
 			item := it.Item()
 			var outs TxOutputs
 			err := item.Value(func(val []byte) error {
-				return util.GobDecode(val, &outs)
+				return outs.Deserialize(val)
 			})
 			if err != nil {
 				return err

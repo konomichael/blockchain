@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	"blockchain/pkg/util"
 	"blockchain/pkg/wallet"
 )
+
+const minerReward = 20
 
 type Transaction struct {
 	ID      []byte
@@ -79,11 +82,15 @@ func NewTransaction(from, to string, amount int, utxo *UTXOSet) (*Transaction, e
 
 func CoinbaseTx(to, data string) (*Transaction, error) {
 	if data == "" {
-		data = fmt.Sprintf("Coins to %s", to)
+		randData := make([]byte, 24)
+		if _, err := rand.Read(randData); err != nil {
+			return nil, fmt.Errorf("%w: %s", ErrorTxCreateFailed, err)
+		}
+		data = fmt.Sprintf("%x", randData)
 	}
 
 	txIn := NewTxInput(nil, -1, nil)
-	txOut := NewTXOutput(100, to)
+	txOut := NewTXOutput(minerReward, to)
 	tx := &Transaction{
 		Inputs:  []TxInput{*txIn},
 		Outputs: []TxOutput{*txOut},
@@ -98,7 +105,7 @@ func CoinbaseTx(to, data string) (*Transaction, error) {
 func (tx *Transaction) SetID() error {
 	tx.ID = nil
 
-	encode, err := util.GobEncode(tx)
+	encode, err := tx.Serialize()
 	if err != nil {
 		return fmt.Errorf("error while encoding transaction, %w", err)
 	}
@@ -223,4 +230,12 @@ func (tx *Transaction) String() string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+func (tx *Transaction) Serialize() ([]byte, error) {
+	return util.GobEncode(tx)
+}
+
+func (tx *Transaction) Deserialize(data []byte) error {
+	return util.GobDecode(data, tx)
 }

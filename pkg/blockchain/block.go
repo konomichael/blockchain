@@ -1,24 +1,26 @@
 package blockchain
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"fmt"
+	"time"
 
 	"blockchain/pkg/util"
 )
 
 type Block struct {
+	Timestamp    int64
 	Transactions []*Transaction
 	Hash         []byte
 	PrevHash     []byte
 	Nonce        int
+	Height       int
 }
 
-func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
+func CreateBlock(txs []*Transaction, prevHash []byte, height int) *Block {
 	block := &Block{
+		Timestamp:    time.Now().Unix(),
 		Transactions: txs,
 		PrevHash:     prevHash,
+		Height:       height,
 	}
 	pow := NewProof(block)
 	nonce, hash := pow.Run()
@@ -29,7 +31,7 @@ func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
 }
 
 func Genesis(coinbase *Transaction) *Block {
-	return CreateBlock([]*Transaction{coinbase}, []byte{})
+	return CreateBlock([]*Transaction{coinbase}, []byte{}, 0)
 }
 
 func (b *Block) HashTransactions() []byte {
@@ -37,25 +39,15 @@ func (b *Block) HashTransactions() []byte {
 	for _, tx := range b.Transactions {
 		txHashes = append(txHashes, tx.ID)
 	}
-	txHash := sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	tree := NewMerkleTree(txHashes)
 
-	return txHash[:]
+	return tree.RootNode.Data
 }
 
-func (b *Block) Serialize() []byte {
-	encoded, err := util.GobEncode(b)
-	if err != nil {
-		panic(fmt.Errorf("error while serializing block: %w", err))
-	}
-
-	return encoded
+func (b *Block) Serialize() ([]byte, error) {
+	return util.GobEncode(b)
 }
 
-func Deserialize(data []byte) *Block {
-	var block Block
-	if err := util.GobDecode(data, &block); err != nil {
-		panic(fmt.Errorf("error while deserializing block: %w", err))
-	}
-
-	return &block
+func (b *Block) Deserialize(data []byte) error {
+	return util.GobDecode(data, b)
 }

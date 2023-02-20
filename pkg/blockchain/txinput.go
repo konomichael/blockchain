@@ -27,5 +27,5 @@ func NewTxInput(id []byte, out int, pubKey []byte) *TxInput {
 func (in *TxInput) UsesKey(pubKeyHash []byte) bool {
 	lockingHash := crypto.HashPublicKey(in.PubKey)
 
-	return bytes.Compare(lockingHash, pubKeyHash) == 0
+	return bytes.Equal(lockingHash, pubKeyHash)
 }

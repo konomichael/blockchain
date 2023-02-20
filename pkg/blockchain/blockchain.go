@@ -45,7 +45,11 @@ func InitBlockChain(address string) (*BlockChain, error) {
 		genesis := Genesis(cbtx)
 		fmt.Println("Genesis created")
 
-		if err1 := txn.Set(genesis.Hash, genesis.Serialize()); err1 != nil {
+		encodedGenesis, err1 := genesis.Serialize()
+		if err1 != nil {
+			return fmt.Errorf("error while serializing genesis block: %w", err1)
+		}
+		if err1 := txn.Set(genesis.Hash, encodedGenesis); err1 != nil {
 			return fmt.Errorf("error while setting genesis block: %w", err1)
 		}
 
@@ -63,7 +67,7 @@ func InitBlockChain(address string) (*BlockChain, error) {
 		return nil, fmt.Errorf("error while updating blockchain: %w", err)
 	}
 
-	return &BlockChain{db, lastHash}, nil
+	return &BlockChain{database: db, lastHash: lastHash}, nil
 }
 
 func ContinueBlockChain() (*BlockChain, error) {
@@ -95,46 +99,93 @@ func ContinueBlockChain() (*BlockChain, error) {
 		return nil, fmt.Errorf("error while getting last hash: %w", err)
 	}
 
-	return &BlockChain{db, lastHash}, nil
+	return &BlockChain{database: db, lastHash: lastHash}, nil
 }
 
-func (bc *BlockChain) AddBlock(transactions []*Transaction) (*Block, error) {
-	var lastHash []byte
-
-	err := bc.database.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("lh"))
-		if err != nil {
-			return fmt.Errorf("error while getting last hash: %w", err)
-		}
-
-		return item.Value(func(val []byte) error {
-			lastHash = append(lastHash, val...)
-
+func (bc *BlockChain) AddBlock(block *Block) error {
+	return bc.database.Update(func(txn *badger.Txn) error {
+		if _, err := txn.Get(block.Hash); err == nil {
 			return nil
-		})
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error while getting last hash: %w", err)
-	}
-
-	block := CreateBlock(transactions, lastHash)
-
-	err = bc.database.Update(func(txn *badger.Txn) error {
-		if err1 := txn.Set(block.Hash, block.Serialize()); err1 != nil {
-			return fmt.Errorf("error while setting new block: %w", err1)
 		}
 
-		if err1 := txn.Set([]byte("lh"), block.Hash); err1 != nil {
-			return fmt.Errorf("error while setting last hash: %w", err1)
+		item, err := txn.Get(bc.lastHash)
+		if err != nil {
+			return fmt.Errorf("error while getting last block: %w", err)
+		}
+
+		lastBlock := &Block{}
+		if err := item.Value(func(val []byte) error {
+			return lastBlock.Deserialize(val)
+		}); err != nil {
+			return fmt.Errorf("error while deserializing last block: %w", err)
+		}
+
+		if block.Height != lastBlock.Height+1 {
+			return fmt.Errorf("error while adding block: %w, lastBlock's height: %d, block's height: %d", ErrorBlkHeightInvalid, lastBlock.Height, block.Height)
+		}
+
+		if block.PrevHash == nil || !bytes.Equal(block.PrevHash, lastBlock.Hash) {
+			return fmt.Errorf("error while adding block: %w, lastBlock's hash: %x, block's prevHash: %x", ErrorBlkPrevHashInvalid, lastBlock.Hash, block.PrevHash)
+		}
+
+		blockData, err := block.Serialize()
+		if err != nil {
+			return fmt.Errorf("error while serializing block: %w", err)
+		}
+
+		if err := txn.Set(block.Hash, blockData); err != nil {
+			return fmt.Errorf("error while setting block: %w", err)
+		}
+
+		if err := txn.Set([]byte("lh"), block.Hash); err != nil {
+			return fmt.Errorf("error while setting last hash: %w", err)
 		}
 
 		bc.lastHash = block.Hash
 
 		return nil
 	})
+}
 
+func (bc *BlockChain) MineBlock(transactions []*Transaction) (*Block, error) {
+	var lastHeight int
+	lastHash := bc.lastHash
+
+	for _, tx := range transactions {
+		if !bc.VerifyTransaction(tx) {
+			return nil, fmt.Errorf("while verifying transaction %s: %w", hex.EncodeToString(tx.ID), ErrorTxInvalid)
+		}
+	}
+
+	err := bc.database.View(func(txn *badger.Txn) error {
+		item, err1 := txn.Get(lastHash)
+		if err1 != nil {
+			return fmt.Errorf("error while getting last block: %w", err1)
+		}
+
+		if err1 = item.Value(func(val []byte) error {
+			lastBlock := &Block{}
+			if err2 := lastBlock.Deserialize(val); err2 != nil {
+				return fmt.Errorf("error while deserializing last block: %w", err2)
+			}
+
+			lastHeight = lastBlock.Height
+			return nil
+		}); err1 != nil {
+			return fmt.Errorf("error while getting last block's height: %w", err1)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("error while updating blockchain: %w", err)
+		return nil, fmt.Errorf("error while getting last hash: %w", err)
+	}
+
+	block := CreateBlock(transactions, lastHash, lastHeight+1)
+
+	err = bc.AddBlock(block)
+	if err != nil {
+		return nil, fmt.Errorf("error while adding block: %w", err)
 	}
 
 	return block, nil
@@ -181,7 +232,7 @@ func (bc *BlockChain) FindTransaction(ID []byte) (*Transaction, error) {
 	for iter.HasNext() {
 		block := iter.Next()
 		for _, tx := range block.Transactions {
-			if bytes.Compare(tx.ID, ID) == 0 {
+			if bytes.Equal(tx.ID, ID) {
 				return tx, nil
 			}
 		}
@@ -203,6 +254,10 @@ func (bc *BlockChain) SignTransaction(tx *Transaction, privKey *ecdsa.PrivateKey
 }
 
 func (bc *BlockChain) VerifyTransaction(tx *Transaction) bool {
+	if tx.IsCoinbase() {
+		return true
+	}
+
 	prevTXs := make(map[string]*Transaction)
 
 	for _, in := range tx.Inputs {
@@ -213,6 +268,32 @@ func (bc *BlockChain) VerifyTransaction(tx *Transaction) bool {
 		}
 	}
 	return tx.Verify(prevTXs)
+}
+
+func (bc *BlockChain) GetBaseHeight() (int, error) {
+	var lastBlock *Block
+
+	err := bc.database.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(bc.lastHash)
+		if err != nil {
+			return fmt.Errorf("error while getting last block: %w", err)
+		}
+
+		err = item.Value(func(val []byte) error {
+			return lastBlock.Deserialize(val)
+		})
+		if err != nil {
+			return fmt.Errorf("error while getting last block: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return 0, fmt.Errorf("error while getting last block: %w", err)
+	}
+
+	return lastBlock.Height, nil
 }
 
 func (bc *BlockChain) Close() {

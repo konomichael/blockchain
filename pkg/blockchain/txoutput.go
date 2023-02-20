@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"blockchain/pkg/util"
 	"blockchain/pkg/wallet"
 )
 
@@ -34,5 +35,13 @@ func (out *TxOutput) Lock(address string) {
 }
 
 func (out *TxOutput) IsLockedWithKey(pubKeyHash []byte) bool {
-	return bytes.Compare(out.PubKeyHash, pubKeyHash) == 0
+	return bytes.Equal(out.PubKeyHash, pubKeyHash)
+}
+
+func (outs *TxOutputs) Serialize() ([]byte, error) {
+	return util.GobEncode(outs)
+}
+
+func (outs *TxOutputs) Deserialize(data []byte) error {
+	return util.GobDecode(data, outs)
 }
